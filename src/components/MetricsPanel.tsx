@@ -17,43 +17,39 @@ import {
   BarChart,
 } from 'lucide-react';
 import CountUp from 'react-countup';
-import { Sparklines, SparklinesLine, SparklinesSpots } from 'react-sparklines';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import MetricCard from './MetricCard';
 
+// Enhanced currency formatter for Indian values
 export const formatIndianCurrency = (value: number): string => {
-  const formatter = new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  });
-  return formatter.format(value);
+  if (value >= 10000000) { // 1 Crore
+    return `₹${(value / 10000000).toFixed(1)}Cr`;
+  } else if (value >= 100000) { // 1 Lakh
+    return `₹${(value / 100000).toFixed(1)}L`;
+  } else if (value >= 1000) { // 1 Thousand
+    return `₹${(value / 1000).toFixed(1)}K`;
+  } else {
+    return `₹${value.toFixed(0)}`;
+  }
+};
+
+// Number formatter for large values
+export const formatLargeNumber = (value: number): string => {
+  if (value >= 10000000) {
+    return `${(value / 10000000).toFixed(1)}Cr`;
+  } else if (value >= 100000) {
+    return `${(value / 100000).toFixed(1)}L`;
+  } else if (value >= 1000) {
+    return `${(value / 1000).toFixed(1)}K`;
+  } else {
+    return value.toString();
+  }
 };
 
 interface MetricsPanelProps {
   data: ProcessedData[];
 }
-
-const generateSparklineData = (data: ProcessedData[], field: keyof ProcessedData, periods: number = 10): number[] => {
-  // Group data by period
-  const periodData = data.reduce((acc: Record<string, number>, item) => {
-    const period = item.period || 'Unknown';
-    if (!acc[period]) acc[period] = 0;
-    const value = typeof item[field] === 'number' ? item[field] as number : 
-                  typeof item[field] === 'string' ? parseFloat(item[field] as string) || 0 : 0;
-    acc[period] += value;
-    return acc;
-  }, {});
-
-  // Sort periods chronologically and take the last `periods` number
-  const sortedPeriods = Object.keys(periodData).sort();
-  const recentPeriods = sortedPeriods.slice(-periods);
-
-  // Return the values for the recent periods
-  return recentPeriods.map(period => periodData[period]);
-};
 
 const MetricsPanel: React.FC<MetricsPanelProps> = ({ data }) => {
   const [showCountUp, setShowCountUp] = useState(false);
@@ -74,7 +70,6 @@ const MetricsPanel: React.FC<MetricsPanelProps> = ({ data }) => {
     const totalCancelled = data.reduce((sum, item) => sum + item.totalCancelled, 0);
     const totalTime = data.reduce((sum, item) => sum + item.totalTime, 0);
 
-    const totalNonEmpty = data.reduce((sum, item) => sum + item.totalNonEmpty, 0);
     const averageClassSize = totalClasses > 0 ? totalCheckins / totalClasses : 0;
     const averageRevenue = totalClasses > 0 ? totalRevenue / totalClasses : 0;
     const cancellationRate = totalCheckins + totalCancelled > 0 ? (totalCancelled / (totalCheckins + totalCancelled)) * 100 : 0;
@@ -86,22 +81,24 @@ const MetricsPanel: React.FC<MetricsPanelProps> = ({ data }) => {
     return [
       {
         title: 'Total Classes',
-        value: showCountUp ? <CountUp end={totalClasses} duration={2} /> : totalClasses,
+        value: showCountUp ? formatLargeNumber(totalClasses) : formatLargeNumber(totalClasses),
+        numericValue: totalClasses,
         icon: <Calendar className="h-5 w-5 text-blue-500" />,
         trend: { value: 12.5, label: 'vs last month' },
         analytics: {
-          previousValue: Math.round(totalClasses * 0.9),
+          previousValue: formatLargeNumber(Math.round(totalClasses * 0.9)),
           change: 12.5,
           insights: ['Peak hours: 6-8 PM', 'Most popular: Weekends']
         }
       },
       {
         title: 'Total Check-ins',
-        value: showCountUp ? <CountUp end={totalCheckins} duration={2} /> : totalCheckins,
+        value: showCountUp ? formatLargeNumber(totalCheckins) : formatLargeNumber(totalCheckins),
+        numericValue: totalCheckins,
         icon: <CheckCircle2 className="h-5 w-5 text-green-500" />,
         trend: { value: 8.2, label: 'vs last month' },
         analytics: {
-          previousValue: Math.round(totalCheckins * 0.92),
+          previousValue: formatLargeNumber(Math.round(totalCheckins * 0.92)),
           change: 8.2,
           insights: ['Attendance rate: 85%', 'Growing steadily']
         }
@@ -109,6 +106,7 @@ const MetricsPanel: React.FC<MetricsPanelProps> = ({ data }) => {
       {
         title: 'Total Revenue',
         value: formatIndianCurrency(totalRevenue),
+        numericValue: totalRevenue,
         icon: <DollarSign className="h-5 w-5 text-emerald-500" />,
         trend: { value: 15.3, label: 'vs last month' },
         analytics: {
@@ -119,7 +117,8 @@ const MetricsPanel: React.FC<MetricsPanelProps> = ({ data }) => {
       },
       {
         title: 'Avg. Class Size',
-        value: showCountUp ? <CountUp end={averageClassSize} decimals={1} duration={2} /> : averageClassSize.toFixed(1),
+        value: averageClassSize.toFixed(1),
+        numericValue: averageClassSize,
         icon: <Users className="h-5 w-5 text-violet-500" />,
         trend: { value: -2.1, label: 'vs last month' },
         analytics: {
@@ -130,11 +129,12 @@ const MetricsPanel: React.FC<MetricsPanelProps> = ({ data }) => {
       },
       {
         title: 'Cancellations',
-        value: showCountUp ? <CountUp end={totalCancelled} duration={2} /> : totalCancelled,
+        value: showCountUp ? formatLargeNumber(totalCancelled) : formatLargeNumber(totalCancelled),
+        numericValue: totalCancelled,
         icon: <XCircle className="h-5 w-5 text-red-500" />,
         trend: { value: -5.7, label: 'vs last month' },
         analytics: {
-          previousValue: Math.round(totalCancelled * 1.06),
+          previousValue: formatLargeNumber(Math.round(totalCancelled * 1.06)),
           change: -5.7,
           insights: ['Mainly weather related', 'Improvement in retention']
         }
@@ -142,6 +142,7 @@ const MetricsPanel: React.FC<MetricsPanelProps> = ({ data }) => {
       {
         title: 'Cancellation Rate',
         value: `${cancellationRate.toFixed(1)}%`,
+        numericValue: cancellationRate,
         icon: <Percent className="h-5 w-5 text-orange-500" />,
         trend: { value: -8.3, label: 'vs last month' },
         analytics: {
@@ -153,6 +154,7 @@ const MetricsPanel: React.FC<MetricsPanelProps> = ({ data }) => {
       {
         title: 'Revenue Per Class',
         value: formatIndianCurrency(averageRevenue),
+        numericValue: averageRevenue,
         icon: <BarChart className="h-5 w-5 text-amber-500" />,
         trend: { value: 18.7, label: 'vs last month' },
         analytics: {
@@ -163,18 +165,20 @@ const MetricsPanel: React.FC<MetricsPanelProps> = ({ data }) => {
       },
       {
         title: 'Total Hours',
-        value: showCountUp ? <CountUp end={totalTime} decimals={0} duration={2} /> : totalTime.toFixed(0),
+        value: showCountUp ? formatLargeNumber(totalTime) : formatLargeNumber(totalTime),
+        numericValue: totalTime,
         icon: <Clock className="h-5 w-5 text-cyan-500" />,
         trend: { value: 22.1, label: 'vs last month' },
         analytics: {
-          previousValue: Math.round(totalTime * 0.82),
+          previousValue: formatLargeNumber(Math.round(totalTime * 0.82)),
           change: 22.1,
           insights: ['Extended session popularity', 'Instructor utilization up']
         }
       },
       {
         title: 'Unique Classes',
-        value: showCountUp ? <CountUp end={uniqueClasses} duration={2} /> : uniqueClasses,
+        value: uniqueClasses.toString(),
+        numericValue: uniqueClasses,
         icon: <Activity className="h-5 w-5 text-fuchsia-500" />,
         analytics: {
           insights: ['Most popular: Yoga', 'New formats launched']
@@ -182,7 +186,8 @@ const MetricsPanel: React.FC<MetricsPanelProps> = ({ data }) => {
       },
       {
         title: 'Unique Trainers',
-        value: showCountUp ? <CountUp end={uniqueTeachers} duration={2} /> : uniqueTeachers,
+        value: uniqueTeachers.toString(),
+        numericValue: uniqueTeachers,
         icon: <User className="h-5 w-5 text-pink-500" />,
         analytics: {
           insights: ['High retention rate', 'Diverse expertise']
@@ -190,7 +195,8 @@ const MetricsPanel: React.FC<MetricsPanelProps> = ({ data }) => {
       },
       {
         title: 'Locations',
-        value: showCountUp ? <CountUp end={uniqueLocations} duration={2} /> : uniqueLocations,
+        value: uniqueLocations.toString(),
+        numericValue: uniqueLocations,
         icon: <BarChart3 className="h-5 w-5 text-yellow-500" />,
         analytics: {
           insights: ['Multi-location growth', 'Expansion opportunities']
@@ -199,6 +205,7 @@ const MetricsPanel: React.FC<MetricsPanelProps> = ({ data }) => {
       {
         title: 'Class Attendance',
         value: `${(totalCheckins * 100 / (totalClasses * 10)).toFixed(1)}%`,
+        numericValue: (totalCheckins * 100 / (totalClasses * 10)),
         icon: <LineChart className="h-5 w-5 text-teal-500" />,
         trend: { value: 5.4, label: 'vs last month' },
         analytics: {
@@ -233,8 +240,8 @@ const MetricsPanel: React.FC<MetricsPanelProps> = ({ data }) => {
         </p>
       </motion.div>
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      {/* Metrics Grid - Uniform sizing */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
         {metrics.map((metric, index) => (
           <motion.div
             key={index}
@@ -245,13 +252,28 @@ const MetricsPanel: React.FC<MetricsPanelProps> = ({ data }) => {
               delay: index * 0.1,
               ease: [0.4, 0, 0.2, 1]
             }}
+            className="h-full"
           >
             <MetricCard
               title={metric.title}
-              value={metric.value}
+              value={showCountUp && metric.numericValue ? 
+                <CountUp end={metric.numericValue} duration={2} formattingFn={(value) => {
+                  if (metric.title.includes('Revenue')) {
+                    return formatIndianCurrency(value);
+                  } else if (metric.title.includes('Rate') || metric.title.includes('Attendance')) {
+                    return `${value.toFixed(1)}%`;
+                  } else if (metric.title.includes('Avg')) {
+                    return value.toFixed(1);
+                  } else {
+                    return formatLargeNumber(value);
+                  }
+                }} /> : 
+                metric.value
+              }
               icon={metric.icon}
               trend={metric.trend}
               analytics={metric.analytics}
+              className="h-full"
             />
           </motion.div>
         ))}
