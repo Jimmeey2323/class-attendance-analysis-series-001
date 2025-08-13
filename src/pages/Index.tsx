@@ -83,6 +83,15 @@ const Index = () => {
     });
   };
 
+  const handleLogout = () => {
+    handleReset();
+    toast({
+      title: 'Logged out',
+      description: 'You have been logged out successfully.',
+      duration: 3000
+    });
+  };
+
   return (
     <div className="bg-gradient-to-b from-[#F8F9FC] to-[#F0F4FF] dark:from-gray-900 dark:to-gray-950 min-h-screen">
       {!fileUploaded ? (
@@ -119,7 +128,8 @@ const Index = () => {
           progress={progress} 
           onReset={handleReset} 
           viewMode={viewMode} 
-          setViewMode={setViewMode} 
+          setViewMode={setViewMode}
+          onLogout={handleLogout}
         />
       )}
     </div>
